@@ -17,10 +17,10 @@ Repository: https://github.com/UnityNodes/ai_travel_assistant
 ## Repository Structure
 
 - Contract:
-  [travel_assistant.py](file:///d:/GitHub/AI%20Travel%20Assistant/contracts/travel_assistant.py)
+  [travel_assistant.py]
 - Deploy script:
-  [deployScript.ts](file:///d:/GitHub/AI%20Travel%20Assistant/deploy/deployScript.ts)
-- Demo runner: [run.ts](file:///d:/GitHub/AI%20Travel%20Assistant/deploy/run.ts)
+  [deployScript.ts]
+- Demo runner: [run.ts]
 
 ## Prerequisites
 
