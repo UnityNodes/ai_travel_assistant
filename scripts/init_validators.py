@@ -42,28 +42,22 @@ def recreate_validators():
     print("Creating new validators with corrected configuration...")
     
     validator_params = {
-        "stake": 1,
-        "provider": "google",
-        "model": "gemini-2.0-flash-lite-001",
-        "config": {},
-        "plugin": "google",
-        "plugin_config": {
-            "api_key_env_var": "GEMINI_API_KEY",
-            "api_url": "https://generativelanguage.googleapis.com"
-        }
+        "stake": 10000,
+        "provider": "heuristai",
+        "model": "deepseek/deepseek-v3",
+        "config": {"max_tokens": 4000, "temperature": 0.1},
     }
 
+    num_validators = 3
     print(f"Using params: {validator_params}")
-    for i in range(5):
-        print(f"Creating validator {i+1}/5...")
+    for i in range(num_validators):
+        print(f"Creating validator {i+1}/{num_validators}...")
         try:
             args_list = [
                 validator_params["stake"],
                 validator_params["provider"],
                 validator_params["model"],
                 validator_params["config"],
-                validator_params["plugin"],
-                validator_params["plugin_config"]
             ]
             
             result = rpc("sim_createValidator", args_list)

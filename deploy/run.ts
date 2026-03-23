@@ -1,65 +1,98 @@
-import { createClient, generatePrivateKey, createAccount as createGenLayerAccount } from "genlayer-js";
+import {
+  createClient,
+  generatePrivateKey,
+  createAccount as createGenLayerAccount,
+} from "genlayer-js";
 import { TransactionStatus } from "genlayer-js/types";
-import { simulator } from "genlayer-js/chains";
+import { localnet } from "genlayer-js/chains";
 import main from "./deployScript.js";
 
 async function run() {
   const account = createGenLayerAccount(generatePrivateKey());
-  const client = createClient({ chain: simulator, account });
+  const client = createClient({ chain: localnet, account });
+
   try {
+    // 1. Deploy contract
     const address = await main(client);
+
+    // 2. Parse CLI arguments
     const budget = Number(process.argv[2] ?? 1500);
-    const destination = String(process.argv[3] ?? "Paris");
+    const destination = String(process.argv[3] ?? "France");
     const dates = String(process.argv[4] ?? "2026-05-01 to 2026-05-07");
-    const preferences = String(process.argv[5] ?? "Cheap flights");
-    console.log("Invoking contract methods...", { address, account: account.address, budget, destination, dates, preferences });
+    const preferences = String(
+      process.argv[5] ?? "Cheap flights, cultural tours"
+    );
+
+    console.log("\nRequesting trip...", {
+      address,
+      sender: account.address,
+      budget,
+      destination,
+      dates,
+      preferences,
+    });
+
+    // 3. Write: request_trip
     const txHash = await client.writeContract({
       address: address as any,
       functionName: "request_trip",
       args: [budget, destination, dates, preferences],
       value: 0n,
     });
+
+    console.log("Transaction sent:", txHash);
+    console.log("Waiting for FINALIZED status (this may take a minute)...");
+
     const receipt = await client.waitForTransactionReceipt({
       hash: txHash,
       status: TransactionStatus.FINALIZED,
-      interval: 5000,
-      retries: 40,
+      interval: 10000,
+      retries: 120,
     });
-    const summary = {
-      status: "FINALIZED",
-      result_name: (receipt as any).result_name ?? "MAJORITY_AGREE",
-      contract_address: address,
-      sender: account.address,
-      tx_id: (receipt as any).tx_id,
-    };
-    const historyLen = await client.readContract({
-      address: address as any,
-      functionName: "get_history_len",
-      args: [account.address],
-      stateStatus: TransactionStatus.FINALIZED,
-    });
-    const allHistories = await client.readContract({
-      address: address as any,
-      functionName: "get_all_histories",
-      args: [],
-      stateStatus: TransactionStatus.FINALIZED,
-    });
+
+    console.log("\nTransaction finalized!");
+    console.log("Result:", (receipt as any).result_name ?? "MAJORITY_AGREE");
+
+    // 4. Read: get_history
     const history = await client.readContract({
       address: address as any,
       functionName: "get_history",
       args: [account.address],
-      stateStatus: TransactionStatus.FINALIZED,
     });
+
+    // 5. Read: get_history_len
+    const historyLen = await client.readContract({
+      address: address as any,
+      functionName: "get_history_len",
+      args: [account.address],
+    });
+
+    // 6. Read: get_profile
     const profile = await client.readContract({
       address: address as any,
       functionName: "get_profile",
       args: [account.address],
-      stateStatus: TransactionStatus.FINALIZED,
     });
-    console.log("\nDemo Summary", { summary, historyLen, allHistories, history, profile });
+
+    // 7. Read: get_all_histories
+    const allHistories = await client.readContract({
+      address: address as any,
+      functionName: "get_all_histories",
+      args: [],
+    });
+
+    console.log("\n=== Demo Summary ===");
+    console.log("Contract:", address);
+    console.log("Sender:", account.address);
+    console.log("History length:", historyLen);
+    console.log("Profile:", profile);
+    console.log("All histories:", JSON.stringify(allHistories));
+    console.log("\nTrip history:");
+    console.log(typeof history === "string" ? history : JSON.stringify(history, null, 2));
+
     process.exit(0);
   } catch (err) {
-    console.error(err);
+    console.error("Error:", err);
     process.exit(1);
   }
 }
