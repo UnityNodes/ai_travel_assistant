@@ -5,8 +5,7 @@ const testnetBradbury = chains.testnetBradbury;
 async function read() {
   let rawKey = process.env.PRIVATE_KEY ?? "";
   if (!rawKey.startsWith("0x")) rawKey = "0x" + rawKey;
-  const privateKey = rawKey as `0x${string}`;
-  const account = createGenLayerAccount(privateKey);
+  const account = createGenLayerAccount(rawKey as `0x${string}`);
   const client = createClient({ chain: testnetBradbury, account });
 
   const address = process.env.CONTRACT_ADDRESS ?? process.argv[2];
@@ -15,19 +14,16 @@ async function read() {
   console.log("\nReading contract:", address);
   console.log("Account:", account.address);
 
-  const timeout = (ms: number) => new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
-  );
-  const read = (fn: string, args: any[]) =>
+  const withTimeout = (fn: string, args: any[]) =>
     Promise.race([
       client.readContract({ address: address as any, functionName: fn, args }),
-      timeout(15000),
+      new Promise((_, r) => setTimeout(() => r(new Error("Timeout after 15s")), 15000)),
     ]);
 
-  const reports    = await read("get_reports",     [account.address]);
-  const reportsLen = await read("get_reports_len", [account.address]);
-  const profile    = await read("get_profile",     [account.address]);
-  const allReports = await read("get_all_reports", []);
+  const reports    = await withTimeout("get_reports",     [account.address]);
+  const reportsLen = await withTimeout("get_reports_len", [account.address]);
+  const profile    = await withTimeout("get_profile",     [account.address]);
+  const allReports = await withTimeout("get_all_reports", []);
 
   console.log("\n=== On-chain Data ===");
   console.log("Reports count:", reportsLen);

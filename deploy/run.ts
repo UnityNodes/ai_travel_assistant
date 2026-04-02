@@ -1,37 +1,35 @@
-import {
-  createClient,
-  generatePrivateKey,
-  createAccount as createGenLayerAccount,
-} from "genlayer-js";
+import { createClient, generatePrivateKey, createAccount as createGenLayerAccount, chains } from "genlayer-js";
 import { TransactionStatus } from "genlayer-js/types";
-import { testnetBradbury } from "genlayer-js/chains";
 import main from "./deployScript.js";
 
+const testnetBradbury = chains.testnetBradbury;
+
 async function run() {
-  // On Bradbury testnet use a persistent private key so the funded account is reused.
-  // Set PRIVATE_KEY env var to your funded account, or a fresh key will be generated.
-  const privateKey = (process.env.PRIVATE_KEY as `0x${string}`) ?? generatePrivateKey();
-  const account = createGenLayerAccount(privateKey);
+  let rawKey = process.env.PRIVATE_KEY ?? "";
+  if (rawKey.length > 0) {
+    if (!rawKey.startsWith("0x")) rawKey = "0x" + rawKey;
+  } else {
+    rawKey = generatePrivateKey();
+  }
+  const account = createGenLayerAccount(rawKey as `0x${string}`);
   const client = createClient({ chain: testnetBradbury, account });
 
   try {
-    // 1. Deploy contract
-    const address = await main(client);
-
-    // 2. Parse CLI arguments
     const protocol = String(process.argv[2] ?? "Aave");
     const amount = Number(process.argv[3] ?? 1000);
     const riskTolerance = String(process.argv[4] ?? "low");
+    const existingAddress = process.env.CONTRACT_ADDRESS ?? "";
 
-    console.log("\nAnalyzing protocol...", {
-      address,
-      sender: account.address,
-      protocol,
-      amount,
-      riskTolerance,
-    });
+    let address: string;
+    if (existingAddress) {
+      address = existingAddress;
+      console.log("\nUsing existing contract:", address);
+    } else {
+      address = await main(client);
+    }
 
-    // 3. Write: analyze_protocol
+    console.log("\nAnalyzing protocol...", { address, sender: account.address, protocol, amount, riskTolerance });
+
     const txHash = await client.writeContract({
       address: address as any,
       functionName: "analyze_protocol",
@@ -45,46 +43,23 @@ async function run() {
     const receipt = await client.waitForTransactionReceipt({
       hash: txHash,
       status: TransactionStatus.FINALIZED,
-      interval: 5000,
-      retries: 60,
+      interval: 10000,
+      retries: 120,
     });
 
     console.log("\nTransaction finalized!");
     console.log("Result:", (receipt as any).result_name ?? "MAJORITY_AGREE");
 
-    // 4. Read: get_reports
-    const reports = await client.readContract({
-      address: address as any,
-      functionName: "get_reports",
-      args: [account.address],
-    });
-
-    // 5. Read: get_reports_len
-    const reportsLen = await client.readContract({
-      address: address as any,
-      functionName: "get_reports_len",
-      args: [account.address],
-    });
-
-    // 6. Read: get_profile
-    const profile = await client.readContract({
-      address: address as any,
-      functionName: "get_profile",
-      args: [account.address],
-    });
-
-    // 7. Read: get_all_reports
-    const allReports = await client.readContract({
-      address: address as any,
-      functionName: "get_all_reports",
-      args: [],
-    });
+    const reports    = await client.readContract({ address: address as any, functionName: "get_reports",     args: [account.address] });
+    const reportsLen = await client.readContract({ address: address as any, functionName: "get_reports_len", args: [account.address] });
+    const profile    = await client.readContract({ address: address as any, functionName: "get_profile",     args: [account.address] });
+    const allReports = await client.readContract({ address: address as any, functionName: "get_all_reports", args: [] });
 
     console.log("\n=== DeFi Risk Analysis Summary ===");
     console.log("Contract:", address);
     console.log("Sender:", account.address);
     console.log("Reports count:", reportsLen);
-    console.log("Risk tolerance profile:", profile);
+    console.log("Profile:", profile);
     console.log("All reports:", JSON.stringify(allReports));
     console.log("\nRisk report:");
     console.log(typeof reports === "string" ? reports : JSON.stringify(reports, null, 2));
