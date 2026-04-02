@@ -28,8 +28,7 @@ class DeFiRiskAnalyzer(gl.Contract):
     profiles: TreeMap[Address, str]
 
     def __init__(self) -> None:
-        self.reports = TreeMap()
-        self.profiles = TreeMap()
+        pass
 
     @gl.public.write
     def analyze_protocol(self, protocol: str, amount: int, risk_tolerance: str) -> None:
@@ -37,44 +36,18 @@ class DeFiRiskAnalyzer(gl.Contract):
         self.profiles[sender] = risk_tolerance
 
         def _build_analysis() -> str:
-            # Web Fetch 1 — дані протоколу з DeFiLlama
             protocol_slug = protocol.lower().replace(" ", "-")
-            llama_url = f"https://api.llama.fi/protocol/{protocol_slug}"
-            llama_response = gl.nondet.web.get(llama_url)
-            protocol_data = llama_response.body.decode("utf-8")[:500]
+            llama_response = gl.nondet.web.get(f"https://api.llama.fi/protocol/{protocol_slug}")
+            protocol_data = llama_response.body.decode("utf-8")[:200]
 
-            # Web Fetch 2 — глобальний TVL для контексту
-            global_url = "https://api.llama.fi/v2/globalCharts"
-            global_response = gl.nondet.web.get(global_url)
-            global_data = global_response.body.decode("utf-8")[:300]
+            prompt = f"""DeFi risk analyst. Return ONLY JSON, no extra text.
 
-            prompt = f"""You are a DeFi risk and security analyst.
+Protocol: {protocol}, Amount: ${amount}, Risk tolerance: {risk_tolerance}
+DeFiLlama data: {protocol_data}
 
-Protocol: {protocol}
-Investment amount: ${amount}
-Risk tolerance: {risk_tolerance}
+{{"risk_score":0,"risk_level":"low","tvl_usd":"$1B","tvl_trend":"stable","audit_status":"audited","audit_firms":["OpenZeppelin"],"incident_risk":"low","recommendation":"text","warnings":[],"suggested_allocation":10}}
 
-Live DeFiLlama data:
-{protocol_data}
-
-Global DeFi context:
-{global_data}
-
-Return ONLY a valid JSON object:
-{{
-  "risk_score": <1-10>,
-  "risk_level": "<low|medium|high>",
-  "tvl_usd": "<e.g. $8.2B>",
-  "tvl_trend": "<growing|stable|declining>",
-  "audit_status": "<audited|unaudited|unknown>",
-  "audit_firms": ["<firm1>", "<firm2>"],
-  "incident_risk": "<low|medium|high>",
-  "recommendation": "<1-2 sentences>",
-  "warnings": ["<warning1>", "<warning2>"],
-  "suggested_allocation": <0-100>
-}}
-
-No markdown, no extra text, only JSON."""
+Fill real values for {protocol}. Return only JSON."""
 
             return gl.nondet.exec_prompt(prompt)
 
@@ -83,7 +56,6 @@ No markdown, no extra text, only JSON."""
             "Outputs are equivalent if risk_level, audit_status, and tvl_trend match.",
         )
 
-        # Парсинг результату
         clean = result_raw.strip()
         start = clean.find("{")
         end = clean.rfind("}")
@@ -107,27 +79,30 @@ No markdown, no extra text, only JSON."""
             suggested_allocation=result["suggested_allocation"],
         )
 
-        if sender not in self.reports:
-            self.reports[sender] = DynArray()
-        self.reports[sender].append(report)
+        user_reports = self.reports.get_or_insert_default(sender)
+        user_reports.append(report)
+        self.reports[sender] = user_reports
 
     @gl.public.view
-    def get_reports(self, user: Address) -> str:
-        if user not in self.reports:
+    def get_reports(self, user: str) -> str:
+        addr = Address(user)
+        if addr not in self.reports:
             return "[]"
-        return json.dumps([r.__dict__ for r in self.reports[user]])
+        return json.dumps([r.__dict__ for r in self.reports[addr]])
 
     @gl.public.view
-    def get_reports_len(self, user: Address) -> int:
-        if user not in self.reports:
+    def get_reports_len(self, user: str) -> int:
+        addr = Address(user)
+        if addr not in self.reports:
             return 0
-        return len(self.reports[user])
+        return len(self.reports[addr])
 
     @gl.public.view
-    def get_profile(self, user: Address) -> str:
-        if user not in self.profiles:
+    def get_profile(self, user: str) -> str:
+        addr = Address(user)
+        if addr not in self.profiles:
             return ""
-        return self.profiles[user]
+        return self.profiles[addr]
 
     @gl.public.view
     def get_all_reports(self) -> str:
