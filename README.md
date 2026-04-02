@@ -1,100 +1,32 @@
-# AI Travel Assistant — Intelligent Contract on GenLayer
+# AI DeFi Risk Analyzer — Intelligent Contract on GenLayer Bradbury
 
-Repository: https://github.com/UnityNodes/ai_travel_assistant
+Repository: https://github.com/UnityNodes/ai_defi_risk_analyzer
 
 ## Overview
 
-An AI-powered Intelligent Contract on GenLayer that helps users plan trips by combining **live web data** with **non-deterministic AI reasoning** and **on-chain consensus**.
+An AI-powered Intelligent Contract on GenLayer Bradbury Testnet that analyzes DeFi protocol risk by combining **live on-chain data** with **non-deterministic AI reasoning** and **decentralized validator consensus**.
 
-Each trip request triggers real web fetches for destination data and currency exchange rates, feeds that context into an LLM prompt, and lets GenLayer validators reach consensus on the AI-generated recommendations through the equivalence principle.
+Each analysis request triggers two real web fetches from DeFiLlama, feeds the live data into an LLM prompt, and lets GenLayer validators reach consensus on the AI-generated risk report through the equivalence principle. The result — risk score, audit status, TVL trend, warnings, and suggested allocation — is stored permanently on-chain.
 
 ## GenLayer Capabilities Used
 
 | Capability | How it is used |
 |---|---|
-| **`gl.nondet.web.get()`** — Web Fetch | Fetches live destination info from the REST Countries API and current USD exchange rates from open.er-api.com. Each validator fetches independently. |
-| **`gl.nondet.exec_prompt()`** — Non-deterministic AI | Generates 3 personalized travel options (economy / standard / premium) using the fetched real-world data as grounding context. |
-| **`gl.eq_principle.prompt_comparative()`** — Comparative Consensus | Every validator independently runs web fetches + AI generation, then outputs are compared semantically to reach consensus. |
+| **`gl.nondet.web.get()`** — Web Fetch | Fetches live protocol data from DeFiLlama (`/protocol/{slug}`) and global TVL context (`/v2/globalCharts`). Each validator fetches independently. |
+| **`gl.nondet.exec_prompt()`** — Non-deterministic AI | Generates a structured risk report (risk score, audit status, TVL trend, warnings, allocation) using the live DeFiLlama data as grounding context. |
+| **`gl.eq_principle.prompt_comparative()`** — Comparative Consensus | Every validator independently runs web fetches + AI analysis; outputs are compared semantically to reach consensus. |
 
 ### Why these capabilities matter
 
-- **Web Fetch** grounds the AI in real data — actual currencies, regions, languages, and live exchange rates — instead of relying on stale training data.
-- **Non-deterministic execution** means each validator produces its own AI output independently, preventing single-point-of-failure answers.
-- **Comparative equivalence principle** compares validator outputs semantically ("do they cover similar budget tiers and match user preferences?") rather than requiring exact string equality, which is essential for AI-generated text.
+- **Web Fetch** grounds the AI in real-time protocol data — actual TVL, trends, and ecosystem context — instead of relying on stale training data.
+- **Non-deterministic execution** means each validator produces its own AI analysis independently, preventing a single point of failure.
+- **Comparative equivalence principle** compares validator outputs semantically ("do `risk_level`, `audit_status`, and `tvl_trend` match?") rather than requiring exact string equality — essential for AI-generated text.
 
-## Features
+## How It Works
 
-- Request a personalized trip with budget, destination, dates, and preferences.
-- Two independent web fetches per request inject real-world context into AI reasoning.
-- Non-deterministic validators independently generate options; consensus via comparative principle.
-- On-chain storage of user profiles and full trip history.
-- View functions for querying history, profile, and aggregate stats.
-
-## Repository Structure
-
-```
-contracts/
-  travel_assistant.py    # Intelligent Contract (Python)
-deploy/
-  deployScript.ts        # Deploys the contract via genlayer-js
-  run.ts                 # End-to-end demo: deploy + request trip + read state
-scripts/
-  init_validators.py     # (Optional) Recreate validators with Gemini config
-package.json
-```
-
-## Prerequisites
-
-- Node.js 18+ (tested with Node 23)
-- npm
-- Docker Desktop (for GenLayer Localnet)
-- GenLayer CLI (`npx genlayer`)
-- GenLayer Localnet or Studio access
-
-## Install
-
-```bash
-npm install
-```
-
-## Start GenLayer Localnet
-
-```bash
-npx genlayer init
-```
-
-Follow the interactive prompts to select an LLM provider (e.g., Heurist AI) and enter your API key. This starts all Docker containers and configures validators.
-
-If you need a clean restart:
-
-```bash
-npx genlayer init
-# or manually:
-npx genlayer up --reset-db --reset-validators --numValidators 5
-```
-
-## Deploy and Run the Demo
-
-```bash
-npx tsx deploy/run.ts 1500 "France" "2026-05-01 to 2026-05-07" "Cheap flights, cultural tours"
-```
-
-Expected output:
-
-- Transaction status: `FINALIZED`
-- Consensus result: `MAJORITY_AGREE`
-- AI-generated travel recommendation stored in on-chain history
-- User profile updated with preferences
-
-## How It Works (Step by Step)
-
-1. User calls `request_trip(budget, destination, dates, preferences)`.
-2. Inside the equivalence principle block, **each validator independently**:
-   - **Web Fetch 1**: calls `gl.nondet.web.get()` to fetch destination data (capital, currencies, languages, region) from the REST Countries API.
-   - **Web Fetch 2**: calls `gl.nondet.web.get()` to fetch live USD exchange rates from open.er-api.com.
-   - **AI Prompt**: calls `gl.nondet.exec_prompt()` with all fetched data injected into the prompt context, generating 3 travel options (economy / standard / premium).
-3. `gl.eq_principle.prompt_comparative()` compares all validator outputs and reaches consensus: outputs are equivalent if they cover similar budget tiers, prices are in a comparable range, and the best option matches user preferences.
-4. The winning recommendation is parsed and stored as a `TravelOption` in the user's on-chain history.
+1. **Fetch** — Each validator independently calls DeFiLlama to get live TVL, trend, and protocol metadata.
+2. **AI** — The fetched data is injected into an LLM prompt that returns a structured JSON risk report.
+3. **Consensus** — `gl.eq_principle.prompt_comparative()` compares all validator outputs; if `risk_level`, `audit_status`, and `tvl_trend` match, consensus is reached and the report is stored on-chain.
 
 ## Contract API
 
@@ -102,30 +34,141 @@ Expected output:
 
 | Method | Description |
 |---|---|
-| `request_trip(budget, destination, dates, preferences)` | Runs web fetch + AI analysis and stores the result |
-| `update_preferences(preferences)` | Updates the caller's stored preferences |
+| `analyze_protocol(protocol, amount, risk_tolerance)` | Fetches live data + runs AI risk analysis and stores the result on-chain |
 
 ### View Methods
 
 | Method | Returns |
 |---|---|
-| `get_history(user)` | JSON array of the user's past trip recommendations |
-| `get_history_len(user)` | Number of trips in the user's history |
-| `get_profile(user)` | The user's stored preferences string |
-| `get_all_histories()` | Map of all addresses to their trip count |
+| `get_reports(user)` | JSON array of all risk reports for a given address |
+| `get_reports_len(user)` | Number of reports stored for a given address |
+| `get_profile(user)` | The user's stored risk tolerance string |
+| `get_all_reports()` | Map of all addresses to their report count |
 
-## Storage
+## Prerequisites
 
-- `profiles: TreeMap[Address, str]` — user preference strings
-- `histories: TreeMap[Address, DynArray[TravelOption]]` — trip history per user
+- Node.js 18+ (tested with Node 23)
+- GenLayer CLI (`npm install -g genlayer` or `npx genlayer`)
+- GEN testnet tokens from the faucet
 
-Each `TravelOption` stores: `destination`, `description`, `price`, `duration`, `rating`, `is_booked`.
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Switch to Bradbury Testnet
+
+```bash
+genlayer network testnet-bradbury
+```
+
+### 3. Create or show your account
+
+```bash
+# Show existing account
+genlayer account show
+
+# Or create a new one
+genlayer account create
+```
+
+### 4. Get free GEN tokens
+
+Go to the faucet and request tokens for your address:
+
+```
+https://testnet-faucet.genlayer.foundation/
+```
+
+### 5. Verify connection
+
+```bash
+genlayer config get network
+```
+
+## Deploy and Run
+
+### Option A — GenLayer CLI
+
+```bash
+# Deploy the contract
+genlayer deploy --contract contracts/defi_risk_analyzer.py
+
+# Analyze a protocol (replace CONTRACT_ADDRESS with the deployed address)
+genlayer write <CONTRACT_ADDRESS> analyze_protocol --args "Aave" 1000 "low"
+
+# Read the risk report (replace YOUR_ADDRESS with your wallet address)
+genlayer call <CONTRACT_ADDRESS> get_reports --args <YOUR_ADDRESS>
+```
+
+### Option B — TypeScript runner
+
+```bash
+# Set your funded private key (recommended for testnet)
+export PRIVATE_KEY=0xyour_private_key_here
+
+# Run: deploy + analyze + read results
+npx tsx deploy/run.ts "Aave" 1000 "low"
+```
+
+### CLI argument order
+
+```
+npx tsx deploy/run.ts <protocol> <amount> <risk_tolerance>
+```
+
+| Argument | Default | Example |
+|---|---|---|
+| `protocol` | `Aave` | `"Uniswap"`, `"Curve"` |
+| `amount` | `1000` | `5000` |
+| `risk_tolerance` | `low` | `"medium"`, `"high"` |
+
+### Expected output
+
+```json
+{
+  "risk_score": 3,
+  "risk_level": "low",
+  "tvl_usd": "$12.1B",
+  "tvl_trend": "stable",
+  "audit_status": "audited",
+  "audit_firms": ["OpenZeppelin", "Trail of Bits"],
+  "incident_risk": "low",
+  "recommendation": "Aave is one of the most battle-tested protocols. Suitable for low risk tolerance.",
+  "warnings": [],
+  "suggested_allocation": 20
+}
+```
+
+## Repository Structure
+
+```
+contracts/
+  defi_risk_analyzer.py  # Intelligent Contract (Python / GenLayer)
+deploy/
+  deployScript.ts        # Deploys the contract via genlayer-js
+  run.ts                 # End-to-end demo: deploy + analyze + read state
+scripts/
+  init_validators.py     # For Localnet only — not needed on Bradbury
+package.json
+```
+
+## Important Notes About Bradbury
+
+- **Do NOT** run `genlayer init` or `genlayer up` — those are for Localnet only.
+- **Do NOT** create validators manually — Bradbury has real decentralized validators.
+- **GEN tokens are required** before deploying — get them from the faucet first.
+- **Transactions take 1–3 minutes** on Bradbury — this is normal; the runner waits automatically.
 
 ## Troubleshooting
 
-- **`NO_MAJORITY`**: try a different LLM model (DeepSeek V3 via Heurist works well), reduce prompt size, or increase validator count.
-- **`type is not supported: i32`**: use `int` instead of `i32` for contract method parameters.
-- **Web fetch errors**: verify the REST Countries and exchange rate APIs are reachable from the GenLayer node (`docker exec genlayer-jsonrpc-1 curl -I https://restcountries.com`).
-- **`running contract failed`**: check that the AI returns valid JSON; the contract strips markdown wrappers automatically.
-- **Receipt delays**: increase `retries` and `interval` in the client script.
-- **Validator LLM errors**: check `docker logs genlayer-jsonrpc-1` for provider errors; some models have low `max_tokens` defaults.
+- **`NO_MAJORITY`**: The validators could not reach consensus. Try again — occasional disagreement is normal on a live testnet with real LLM variance.
+- **Insufficient funds**: Get GEN tokens from `https://testnet-faucet.genlayer.foundation/` before deploying.
+- **`testnetBradbury` not found**: Update `genlayer-js` to the latest version (`npm install genlayer-js@latest`).
+- **Web fetch errors**: DeFiLlama endpoints are public — verify they are reachable and the protocol slug is correct (e.g., `aave`, not `AAVE`).
+- **`running contract failed`**: Check that the AI returns valid JSON; the contract strips markdown wrappers automatically.
+- **Receipt timeout**: On Bradbury, `retries: 60` with `interval: 5000` gives 5 minutes. If the network is slow, increase `retries` in `deploy/run.ts`.
+- **`type is not supported: i32`**: Use `int` instead of `i32` for contract method parameters — already handled in this contract.

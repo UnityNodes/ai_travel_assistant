@@ -4,66 +4,65 @@ import {
   createAccount as createGenLayerAccount,
 } from "genlayer-js";
 import { TransactionStatus } from "genlayer-js/types";
-import { localnet } from "genlayer-js/chains";
+import { testnetBradbury } from "genlayer-js/chains";
 import main from "./deployScript.js";
 
 async function run() {
-  const account = createGenLayerAccount(generatePrivateKey());
-  const client = createClient({ chain: localnet, account });
+  // On Bradbury testnet use a persistent private key so the funded account is reused.
+  // Set PRIVATE_KEY env var to your funded account, or a fresh key will be generated.
+  const privateKey = (process.env.PRIVATE_KEY as `0x${string}`) ?? generatePrivateKey();
+  const account = createGenLayerAccount(privateKey);
+  const client = createClient({ chain: testnetBradbury, account });
 
   try {
     // 1. Deploy contract
     const address = await main(client);
 
     // 2. Parse CLI arguments
-    const budget = Number(process.argv[2] ?? 1500);
-    const destination = String(process.argv[3] ?? "France");
-    const dates = String(process.argv[4] ?? "2026-05-01 to 2026-05-07");
-    const preferences = String(
-      process.argv[5] ?? "Cheap flights, cultural tours"
-    );
+    const protocol = String(process.argv[2] ?? "Aave");
+    const amount = Number(process.argv[3] ?? 1000);
+    const riskTolerance = String(process.argv[4] ?? "low");
 
-    console.log("\nRequesting trip...", {
+    console.log("\nAnalyzing protocol...", {
       address,
       sender: account.address,
-      budget,
-      destination,
-      dates,
-      preferences,
+      protocol,
+      amount,
+      riskTolerance,
     });
 
-    // 3. Write: request_trip
+    // 3. Write: analyze_protocol
     const txHash = await client.writeContract({
       address: address as any,
-      functionName: "request_trip",
-      args: [budget, destination, dates, preferences],
+      functionName: "analyze_protocol",
+      args: [protocol, amount, riskTolerance],
       value: 0n,
     });
 
     console.log("Transaction sent:", txHash);
-    console.log("Waiting for FINALIZED status (this may take a minute)...");
+    console.log("Waiting for FINALIZED status (Bradbury may take 1-3 minutes)...");
 
     const receipt = await client.waitForTransactionReceipt({
       hash: txHash,
       status: TransactionStatus.FINALIZED,
-      interval: 10000,
-      retries: 120,
+      interval: 5000,
+      retries: 60,
     });
 
     console.log("\nTransaction finalized!");
     console.log("Result:", (receipt as any).result_name ?? "MAJORITY_AGREE");
 
-    // 4. Read: get_history
-    const history = await client.readContract({
+    // 4. Read: get_reports
+    const reports = await client.readContract({
       address: address as any,
-      functionName: "get_history",
+      functionName: "get_reports",
       args: [account.address],
     });
 
-    // 5. Read: get_history_len
-    const historyLen = await client.readContract({
+    // 5. Read: get_reports_len
+    const reportsLen = await client.readContract({
       address: address as any,
-      functionName: "get_history_len",
+      functionName: "get_reports_len",
       args: [account.address],
     });
 
@@ -74,21 +73,21 @@ async function run() {
       args: [account.address],
     });
 
-    // 7. Read: get_all_histories
-    const allHistories = await client.readContract({
+    // 7. Read: get_all_reports
+    const allReports = await client.readContract({
       address: address as any,
-      functionName: "get_all_histories",
+      functionName: "get_all_reports",
       args: [],
     });
 
-    console.log("\n=== Demo Summary ===");
+    console.log("\n=== DeFi Risk Analysis Summary ===");
     console.log("Contract:", address);
     console.log("Sender:", account.address);
-    console.log("History length:", historyLen);
-    console.log("Profile:", profile);
-    console.log("All histories:", JSON.stringify(allHistories));
-    console.log("\nTrip history:");
-    console.log(typeof history === "string" ? history : JSON.stringify(history, null, 2));
+    console.log("Reports count:", reportsLen);
+    console.log("Risk tolerance profile:", profile);
+    console.log("All reports:", JSON.stringify(allReports));
+    console.log("\nRisk report:");
+    console.log(typeof reports === "string" ? reports : JSON.stringify(reports, null, 2));
 
     process.exit(0);
   } catch (err) {
