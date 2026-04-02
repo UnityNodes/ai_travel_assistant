@@ -1,132 +1,19 @@
-# AI DeFi Risk Analyzer — Intelligent Contract on GenLayer Bradbury
+# AI DeFi Risk Analyzer
 
-Repository: https://github.com/UnityNodes/ai_defi_risk_analyzer
+An Intelligent Contract on **GenLayer Bradbury Testnet** that analyzes DeFi protocol risk using live blockchain data, non-deterministic AI, and decentralized validator consensus.
 
-## Overview
+**Deployed contract:** [`0xC138cC96061e9F160C94da33e2B7085ff45100ba`](https://explorer-bradbury.genlayer.com/address/0xC138cC96061e9F160C94da33e2B7085ff45100ba)
 
-An AI-powered Intelligent Contract on GenLayer Bradbury Testnet that analyzes DeFi protocol risk by combining **live on-chain data** with **non-deterministic AI reasoning** and **decentralized validator consensus**.
+---
 
-Each analysis request triggers two real web fetches from DeFiLlama, feeds the live data into an LLM prompt, and lets GenLayer validators reach consensus on the AI-generated risk report through the equivalence principle. The result — risk score, audit status, TVL trend, warnings, and suggested allocation — is stored permanently on-chain.
+## What it does
 
-## GenLayer Capabilities Used
+When a user calls `analyze_protocol("Aave", 1000, "low")`, the contract:
 
-| Capability | How it is used |
-|---|---|
-| **`gl.nondet.web.get()`** — Web Fetch | Fetches live protocol data from DeFiLlama (`/protocol/{slug}`) and global TVL context (`/v2/globalCharts`). Each validator fetches independently. |
-| **`gl.nondet.exec_prompt()`** — Non-deterministic AI | Generates a structured risk report (risk score, audit status, TVL trend, warnings, allocation) using the live DeFiLlama data as grounding context. |
-| **`gl.eq_principle.prompt_comparative()`** — Comparative Consensus | Every validator independently runs web fetches + AI analysis; outputs are compared semantically to reach consensus. |
-
-### Why these capabilities matter
-
-- **Web Fetch** grounds the AI in real-time protocol data — actual TVL, trends, and ecosystem context — instead of relying on stale training data.
-- **Non-deterministic execution** means each validator produces its own AI analysis independently, preventing a single point of failure.
-- **Comparative equivalence principle** compares validator outputs semantically ("do `risk_level`, `audit_status`, and `tvl_trend` match?") rather than requiring exact string equality — essential for AI-generated text.
-
-## How It Works
-
-1. **Fetch** — Each validator independently calls DeFiLlama to get live TVL, trend, and protocol metadata.
-2. **AI** — The fetched data is injected into an LLM prompt that returns a structured JSON risk report.
-3. **Consensus** — `gl.eq_principle.prompt_comparative()` compares all validator outputs; if `risk_level`, `audit_status`, and `tvl_trend` match, consensus is reached and the report is stored on-chain.
-
-## Contract API
-
-### Write Methods
-
-| Method | Description |
-|---|---|
-| `analyze_protocol(protocol, amount, risk_tolerance)` | Fetches live data + runs AI risk analysis and stores the result on-chain |
-
-### View Methods
-
-| Method | Returns |
-|---|---|
-| `get_reports(user)` | JSON array of all risk reports for a given address |
-| `get_reports_len(user)` | Number of reports stored for a given address |
-| `get_profile(user)` | The user's stored risk tolerance string |
-| `get_all_reports()` | Map of all addresses to their report count |
-
-## Prerequisites
-
-- Node.js 18+ (tested with Node 23)
-- GenLayer CLI (`npm install -g genlayer` or `npx genlayer`)
-- GEN testnet tokens from the faucet
-
-## Setup
-
-### 1. Install dependencies
-
-```bash
-npm install
-```
-
-### 2. Switch to Bradbury Testnet
-
-```bash
-genlayer network testnet-bradbury
-```
-
-### 3. Create or show your account
-
-```bash
-# Show existing account
-genlayer account show
-
-# Or create a new one
-genlayer account create
-```
-
-### 4. Get free GEN tokens
-
-Go to the faucet and request tokens for your address:
-
-```
-https://testnet-faucet.genlayer.foundation/
-```
-
-### 5. Verify connection
-
-```bash
-genlayer config get network
-```
-
-## Deploy and Run
-
-### Option A — GenLayer CLI
-
-```bash
-# Deploy the contract
-genlayer deploy --contract contracts/defi_risk_analyzer.py
-
-# Analyze a protocol (replace CONTRACT_ADDRESS with the deployed address)
-genlayer write <CONTRACT_ADDRESS> analyze_protocol --args "Aave" 1000 "low"
-
-# Read the risk report (replace YOUR_ADDRESS with your wallet address)
-genlayer call <CONTRACT_ADDRESS> get_reports --args <YOUR_ADDRESS>
-```
-
-### Option B — TypeScript runner
-
-```bash
-# Set your funded private key (recommended for testnet)
-export PRIVATE_KEY=0xyour_private_key_here
-
-# Run: deploy + analyze + read results
-npx tsx deploy/run.ts "Aave" 1000 "low"
-```
-
-### CLI argument order
-
-```
-npx tsx deploy/run.ts <protocol> <amount> <risk_tolerance>
-```
-
-| Argument | Default | Example |
-|---|---|---|
-| `protocol` | `Aave` | `"Uniswap"`, `"Curve"` |
-| `amount` | `1000` | `5000` |
-| `risk_tolerance` | `low` | `"medium"`, `"high"` |
-
-### Expected output
+1. **Fetches live data** — pulls real-time TVL and protocol metrics from DeFiLlama
+2. **Runs AI analysis** — each of 5 independent validators executes an LLM prompt to generate a structured risk report
+3. **Reaches consensus** — validator outputs are compared via the Equivalence Principle; if `risk_level`, `audit_status`, and `tvl_trend` match, the result is finalized
+4. **Stores on-chain** — the risk report is permanently written to contract storage
 
 ```json
 {
@@ -137,38 +24,110 @@ npx tsx deploy/run.ts <protocol> <amount> <risk_tolerance>
   "audit_status": "audited",
   "audit_firms": ["OpenZeppelin", "Trail of Bits"],
   "incident_risk": "low",
-  "recommendation": "Aave is one of the most battle-tested protocols. Suitable for low risk tolerance.",
+  "recommendation": "Aave is one of the most battle-tested DeFi protocols.",
   "warnings": [],
   "suggested_allocation": 20
 }
 ```
 
-## Repository Structure
+---
+
+## GenLayer capabilities
+
+| Capability | Usage |
+|---|---|
+| `gl.nondet.web.get()` | Fetches live protocol data from DeFiLlama API |
+| `gl.nondet.exec_prompt()` | Runs LLM risk analysis on each validator independently |
+| `gl.eq_principle.prompt_comparative()` | Reaches consensus across validators by comparing AI outputs |
+
+---
+
+## Repository structure
 
 ```
 contracts/
-  defi_risk_analyzer.py  # Intelligent Contract (Python / GenLayer)
+  defi_risk_analyzer.py   # Intelligent Contract
 deploy/
-  deployScript.ts        # Deploys the contract via genlayer-js
-  run.ts                 # End-to-end demo: deploy + analyze + read state
-scripts/
-  init_validators.py     # For Localnet only — not needed on Bradbury
-package.json
+  deployScript.ts         # Deploys the contract to Bradbury
+  run.ts                  # Deploy + call analyze_protocol + read results
+  read.ts                 # Read stored reports from an existing contract
 ```
 
-## Important Notes About Bradbury
+---
 
-- **Do NOT** run `genlayer init` or `genlayer up` — those are for Localnet only.
-- **Do NOT** create validators manually — Bradbury has real decentralized validators.
-- **GEN tokens are required** before deploying — get them from the faucet first.
-- **Transactions take 1–3 minutes** on Bradbury — this is normal; the runner waits automatically.
+## Prerequisites
+
+- Node.js 18+
+- GEN tokens on Bradbury — [get from faucet](https://testnet-faucet.genlayer.foundation/)
+- MetaMask or any Ethereum wallet private key
+
+---
+
+## Setup
+
+```bash
+npm install
+```
+
+---
+
+## Deploy and run
+
+```bash
+# Set your funded private key
+$env:PRIVATE_KEY="your_private_key_here"
+
+# Deploy a new contract and run analysis
+npx tsx deploy/run.ts "Aave" 1000 "low"
+
+# Or use the already-deployed contract
+$env:CONTRACT_ADDRESS="0xC138cC96061e9F160C94da33e2B7085ff45100ba"
+npx tsx deploy/run.ts "Uniswap" 5000 "medium"
+```
+
+**Supported arguments:**
+
+| Argument | Description | Example |
+|---|---|---|
+| `protocol` | DeFi protocol name | `"Aave"`, `"Uniswap"`, `"Curve"` |
+| `amount` | Investment amount in USD | `1000` |
+| `risk_tolerance` | Risk profile | `"low"`, `"medium"`, `"high"` |
+
+---
+
+## Read stored reports
+
+```bash
+$env:CONTRACT_ADDRESS="0xC138cC96061e9F160C94da33e2B7085ff45100ba"
+npx tsx deploy/read.ts
+```
+
+---
+
+## Contract API
+
+### Write
+
+| Method | Description |
+|---|---|
+| `analyze_protocol(protocol, amount, risk_tolerance)` | Fetches live data, runs AI analysis, stores result on-chain |
+
+### Read
+
+| Method | Returns |
+|---|---|
+| `get_reports(user)` | JSON array of all risk reports for an address |
+| `get_reports_len(user)` | Number of stored reports |
+| `get_profile(user)` | Stored risk tolerance for an address |
+| `get_all_reports()` | Map of all addresses to report count |
+
+---
 
 ## Troubleshooting
 
-- **`NO_MAJORITY`**: The validators could not reach consensus. Try again — occasional disagreement is normal on a live testnet with real LLM variance.
-- **Insufficient funds**: Get GEN tokens from `https://testnet-faucet.genlayer.foundation/` before deploying.
-- **`testnetBradbury` not found**: Update `genlayer-js` to the latest version (`npm install genlayer-js@latest`).
-- **Web fetch errors**: DeFiLlama endpoints are public — verify they are reachable and the protocol slug is correct (e.g., `aave`, not `AAVE`).
-- **`running contract failed`**: Check that the AI returns valid JSON; the contract strips markdown wrappers automatically.
-- **Receipt timeout**: On Bradbury, `retries: 60` with `interval: 5000` gives 5 minutes. If the network is slow, increase `retries` in `deploy/run.ts`.
-- **`type is not supported: i32`**: Use `int` instead of `i32` for contract method parameters — already handled in this contract.
+| Issue | Fix |
+|---|---|
+| `LEADER TIMEOUT` | Bradbury testnet instability — resubmit the transaction |
+| `ACCEPTED (ERROR)` | Check contract logs in the explorer |
+| Transaction not finalizing | Increase `retries` in `run.ts` — Bradbury can take 5–10 min |
+| `No PRIVATE_KEY` | Set `$env:PRIVATE_KEY` before running |
